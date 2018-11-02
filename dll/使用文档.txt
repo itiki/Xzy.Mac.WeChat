@@ -1,0 +1,1 @@
+项目引入Xzy.IPAD.Core.dll 并且将wxipadapi6.7.dll 放置Bin目录下
