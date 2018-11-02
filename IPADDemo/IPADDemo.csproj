@@ -97,6 +97,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AppData\App.cs" />
     <Compile Include="FormDemo.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -121,6 +122,7 @@
     <Compile Include="Model\ReadPackItem.cs" />
     <Compile Include="Model\ReadPackJson.cs" />
     <Compile Include="Model\RedPacketJson.cs" />
+    <Compile Include="Model\SnsUpload.cs" />
     <Compile Include="Model\TcpMsg.cs" />
     <Compile Include="Model\UserData.cs" />
     <Compile Include="Model\WxDelegate.cs" />

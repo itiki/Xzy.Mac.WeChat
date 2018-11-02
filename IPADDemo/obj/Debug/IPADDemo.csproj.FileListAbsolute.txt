@@ -144,3 +144,4 @@ C:\xm\git\Xzy.Mac.WeChat\Xzy.Mac.WeChat\IPADDemo\obj\Debug\IPADDemo.csproj.CoreC
 C:\xm\git\Xzy.Mac.WeChat\Xzy.Mac.WeChat\IPADDemo\obj\Debug\IPADDemo.csproj.CopyComplete
 C:\xm\git\Xzy.Mac.WeChat\Xzy.Mac.WeChat\IPADDemo\obj\Debug\IPADDemo.exe
 C:\xm\git\Xzy.Mac.WeChat\Xzy.Mac.WeChat\IPADDemo\obj\Debug\IPADDemo.pdb
+C:\xm\git\Xzy.Mac.WeChat\Xzy.Mac.WeChat\IPADDemo\obj\Debug\IPADDemo.csprojAssemblyReference.cache
