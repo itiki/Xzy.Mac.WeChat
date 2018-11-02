@@ -15,6 +15,10 @@ namespace IPADDemo.Model
         public static QrCode qrCode { get; set; }
 
         public static Show show { get; set; }
+
+        public static GetContact getContact { get; set; }
+
+        public static GetGroup getGroup { get; set; }
     }
 
     /// <summary>
@@ -26,4 +30,14 @@ namespace IPADDemo.Model
     /// 系统通知
     /// </summary>
     public delegate void Show(string str);
+
+    /// <summary>
+    /// 获取联系人
+    /// </summary>
+    public delegate void GetContact(Contact contact);
+
+    /// <summary>
+    /// 获取群组
+    /// </summary>
+    public delegate void GetGroup(Contact group);
 }

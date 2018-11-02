@@ -1409,54 +1409,21 @@ namespace IPADDemo.WeChat
                     {
                         con = c.Continue;
                         if (con == 0) { break; }
-                        if (c.MsgType == 2)
-                        {
-                            var user = c.UserName;
-                            var nick = c.NickName;
-                            var bit = c.BitValue;
-                            if (bit == 3)
-                            {
-                                //群组
-
-                            }
-                            lock (objGroup)
-                            {
-                                WxDelegate.show(user);
-                                //若用户名中包含了@符号的，表示这是一个群
-                                if (user.IndexOf("@") != -1)
-                                {
-                                    WxDelegate.show(user + "---" + nick + "|" + bit.ToString());
-                                    if (!dicg.ContainsKey(user))
-                                    {
-                                        dicg.Add(user, user);
-                                        //将所有包含@符号的群收集起来
-                                        wxGroup.Add(new WxGroup() { groupid = c.UserName, groupname = c.NickName, WxUser = this.wxUser.wxid, membercount = c.MemberCount });
-                                    }
-                                }
-                            }
+                        if (c.UserName.IsNull()) {
+                            continue;
                         }
+                        if (c.UserName.IndexOf("@chatroom") == -1)
+                        {
+                            WxDelegate.getContact(c);
+                        }
+                        else {
+                            WxDelegate.getGroup(c);
+                        }
+                            
                     }
                     if (con == 0) { break; }
                 }
                 XzyWxApis.WXSyncReset(pointerWxUser);
-
-                //过滤群，将得到有成员列表的群。若没有成员的群，将被过滤掉
-                List<WxGroup> nWxGroup = new List<WxGroup>();
-
-                for (int i = 0; i < wxGroup.Count; i++)
-                {
-                    WxGroup n = wxGroup[i];
-                    n.member = this.Wx_GetGroupMember(wxGroup[i].groupid);
-
-                    //无群成员，则过滤掉
-                    if (n.member != null)
-                    {
-                        nWxGroup.Add(n);
-
-                    }
-                }
-                wxGroup = nWxGroup;
-                TcpSendMsg(TcpMsg.Group, wxGroup);
             }
         }
 

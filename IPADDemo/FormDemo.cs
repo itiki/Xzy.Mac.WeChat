@@ -15,6 +15,7 @@ namespace IPADDemo
 {
     public partial class FormDemo : Form
     {
+        public static FormDemo _formDemo;
         XzyWeChatThread weChatThread;
 
         public FormDemo()
@@ -22,7 +23,10 @@ namespace IPADDemo
             InitializeComponent();
             WxDelegate.qrCode += new QrCode(this.calback_qrcode);
             WxDelegate.show += new Show(this.calback_show);
+            WxDelegate.getContact += new GetContact(this.calback_getContact);
+            WxDelegate.getGroup += new GetGroup(this.calback_getGroup);
             CheckForIllegalCrossThreadCalls = false;
+            _formDemo = this;
         }
 
         private void FormDemo_Load(object sender, EventArgs e)
@@ -43,6 +47,18 @@ namespace IPADDemo
         void calback_show(string str)
         {
             textBox1.Text = str;
+        }
+
+        void calback_getContact(Contact contact)
+        {
+            string str = $"{contact.UserName}-{contact.NickName}-{contact.Country}-{contact.Provincia}-{contact.Remark}";
+            lb_friend.Items.Add(str);
+        }
+
+        void calback_getGroup(Contact contact)
+        {
+            string str = $"{contact.UserName}-{contact.NickName}-{contact.Country}-{contact.Provincia}-{contact.Remark}";
+            lb_group.Items.Add(str);
         }
 
         private void button1_Click(object sender, EventArgs e)
