@@ -1307,15 +1307,14 @@ namespace IPADDemo.WeChat
         /// </summary>
         /// <param name="wxid"></param>
         /// <param name="content"></param>
-        public unsafe void Wx_SendMoment(string content, string imagelist)
+        public unsafe void Wx_SendMoment(string content, List<string> imagelist)
         {
             fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
             {
-                if (!String.IsNullOrEmpty(imagelist))
+                if (!imagelist.IsNull())
                 {
                     string imagestr = "";
-                    List<string> list = JsonConvert.DeserializeObject<List<string>>(imagelist);
-                    foreach (string strImage in list)
+                    foreach (string strImage in imagelist)
                     {
                         var reg = new Regex("data:image/(.*);base64,");
                         string fileBase64 = reg.Replace(strImage, "");
@@ -1331,6 +1330,18 @@ namespace IPADDemo.WeChat
                     var str = datas.ToString();
                     Wx_ReleaseEX(ref msgPtr);
                 }
+            }
+        }
+
+        public unsafe void Wx_SendMoment(string content)
+        {
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXSendMoments(pointerWxUser, Encoding.Default.GetString(Encoding.UTF8.GetBytes(content.ToString())), (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                var str = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+
             }
         }
 

@@ -64,5 +64,53 @@ namespace IPADDemo
                 weChatThread.Wx_SendImg(txt_msgWxid.Text, FileName);
             }
         }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            weChatThread.Wx_SendMoment(txt_snsText.Text);
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            List<string> imgPath = new List<string>();
+            foreach (var a in listBox1.Items) {
+                imgPath.Add(ImgToBase64String(a.ToString()));
+            }
+            weChatThread.Wx_SendMoment(txt_snsText.Text, imgPath);
+
+        }
+        private string ImgToBase64String(string Imagefilename)
+        {
+            try
+            {
+                Bitmap bmp = new Bitmap(Imagefilename);
+
+                MemoryStream ms = new MemoryStream();
+                bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
+                byte[] arr = new byte[ms.Length];
+                ms.Position = 0;
+                ms.Read(arr, 0, (int)ms.Length);
+                ms.Close();
+                return Convert.ToBase64String(arr);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Multiselect = true;
+
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                listBox1.Items.AddRange(ofd.FileNames);
+            }
+        }
+
+
     }
 }
