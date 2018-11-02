@@ -579,7 +579,7 @@ namespace IPADDemo.WeChat
                         this.TcpSendMsg(TcpMsg.OL, this.wxUser);
                         Task.Factory.StartNew(delegate { this.Wx_GetContacts(); });
 
-                        //马志远：登录成功后，取出token备用
+                        //：登录成功后，取出token备用
                         XzyWxApis.WXGetLoginToken(pointerWxUser, (int)pushStr1);
                         var datas3 = MarshalNativeToManaged((IntPtr)pushStr);
                         var sstr3 = datas3.ToString();
@@ -604,7 +604,7 @@ namespace IPADDemo.WeChat
                     this.TcpSendMsg(TcpMsg.OL, this.wxUser);
                     Task.Factory.StartNew(delegate { this.Wx_GetContacts(); });
 
-                    //马志远：登录成功后，取出token备用
+                    //：登录成功后，取出token备用
                     XzyWxApis.WXGetLoginToken(pointerWxUser, (int)pushStr1);
                     var datas3 = MarshalNativeToManaged((IntPtr)pushStr);
                     var sstr3 = datas3.ToString();
@@ -714,6 +714,7 @@ namespace IPADDemo.WeChat
         /// <param name="content"></param>
         public unsafe void Wx_SendMsg(string wxid, string content)
         {
+            WxDelegate.show(string.Format("发送文字： {0}", content));
             content = content.Replace(" ", "\r\n");
             fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
             {
@@ -732,7 +733,7 @@ namespace IPADDemo.WeChat
         /// <param name="imgpath"></param>
         public unsafe void Wx_SendImg(string wxid, string imgpath)
         {
-            WxDelegate.show(string.Format("发送图片 {0}", imgpath));
+            WxDelegate.show(string.Format("发送图片 ：{0}", imgpath));
 
             fixed (int* WxUser1 = &pointerWxUser, imptr1 = &wx_imptr)
             {
@@ -1212,7 +1213,7 @@ namespace IPADDemo.WeChat
                 Wx_ReleaseEX(ref redPack);
                 #endregion
 
-                #region 循环接收红包事件，先隐藏掉，马志远
+                #region 循环接收红包事件，先隐藏掉
                 double time = Utilities.GetTimestamp;
                 //while (true)
                 //{

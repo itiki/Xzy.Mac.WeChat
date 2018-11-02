@@ -15,6 +15,8 @@ namespace IPADDemo
 {
     public partial class FormDemo : Form
     {
+        XzyWeChatThread weChatThread;
+
         public FormDemo()
         {
             InitializeComponent();
@@ -25,8 +27,7 @@ namespace IPADDemo
 
         private void FormDemo_Load(object sender, EventArgs e)
         {
-            XzyWeChatThread weChatThread = new XzyWeChatThread();
-
+            weChatThread = new XzyWeChatThread();
         }
 
         void calback_qrcode(string qrcode)
@@ -42,6 +43,26 @@ namespace IPADDemo
         void calback_show(string str)
         {
             textBox1.Text = str;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            weChatThread.Wx_SendMsg(txt_msgWxid.Text, txt_msgText.Text);
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+
+            ofd.Filter = "图片文件 |*.jpg;*.png";
+            ofd.ValidateNames = true;
+            ofd.CheckPathExists = true;
+            ofd.CheckFileExists = true;
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                string FileName = ofd.FileName;
+                weChatThread.Wx_SendImg(txt_msgWxid.Text, FileName);
+            }
         }
     }
 }
