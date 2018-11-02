@@ -1,9 +1,10 @@
 # 微信mac协议。
-# 请进入  http://www.keduoduo.online/ 进行注册授权，
-# 注册后将授权配置到app.config即可使用
-# 支持功能如下
+ 请进入  http://www.keduoduo.online/ 进行注册授权，
+ 注册后将授权配置到app.config即可使用
+ 支持功能如下
 
 · -- 
+
         /// <summary>
         /// 账户与密码登录方式
         /// </summary>
@@ -12,6 +13,7 @@
         /// <param name="password">二维码验证密码</param>
         /// <param name="result">二级指针，json字符串，返回执行结果</param>
         /// <returns></returns>
+        [DllImport("wxipadapi6.7.dll", EntryPoint = "WXUserLogin")]
         public static extern void WXUserLogin(int objects, string user, string password, int result);
 
         /// <summary>
