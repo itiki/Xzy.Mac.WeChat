@@ -13,7 +13,6 @@
         /// <param name="password">二维码验证密码</param>
         /// <param name="result">二级指针，json字符串，返回执行结果</param>
         /// <returns></returns>
-        [DllImport("wxipadapi6.7.dll", EntryPoint = "WXUserLogin")]
         public static extern void WXUserLogin(int objects, string user, string password, int result);
 
         /// <summary>
