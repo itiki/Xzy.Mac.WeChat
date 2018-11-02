@@ -16,6 +16,8 @@ using IPADDemo;
 using IPADDemo.Model;
 using IPADDemo.Util;
 using System.Configuration;
+using System.Text.RegularExpressions;
+using IPADDemo.AppData;
 
 namespace IPADDemo.WeChat
 {
@@ -707,6 +709,8 @@ namespace IPADDemo.WeChat
         #endregion
 
         #region 微信方法
+
+        #region 微信消息
         /// <summary>
         /// 发消息 -文字
         /// </summary>
@@ -755,223 +759,57 @@ namespace IPADDemo.WeChat
             }
         }
 
-        private int wx_resultContacts;
         /// <summary>
-        /// 获取通讯录
+        /// 发语音 - silk
         /// </summary>
-        public unsafe void Wx_GetContacts()
+        /// <param name="wxid"></param>
+        /// <param name="imgpath"></param>
+        public unsafe string Wx_SendVoice(string wxid, string silkpath, int time)
         {
-            if (wxGroup != null && wxGroup.Count > 0)
-            {
-                TcpSendMsg(TcpMsg.Group, wxGroup);
-                return;
-            }
-            wxGroup = new List<WxGroup>();
-            Dictionary<string, string> dicg = new Dictionary<string, string>();
-            fixed (int* WxUser1 = &pointerWxUser, resulttxl1 = &wx_resultContacts)
-            {
-                while (true)
-                {
-                    Thread.Sleep(200);
-                    XzyWxApis.WXSyncContact(pointerWxUser, (int)(resulttxl1));
-                    if (wx_resultContacts == 0)
-                    {
-                        continue;
-                    }
-                    var datas = MarshalNativeToManaged((IntPtr)wx_resultContacts);
-                    Wx_ReleaseEX(ref wx_resultContacts);
-                    if (datas == null) { continue; }
-                    var str = datas.ToString();
-                    List<Contact> Contact = null;
-                    Contact = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Contact>>(str);
-                    result = 0;
-                    var con = 0;
-                    //循环所有通讯录对象，此通讯录包括好友、群、公众号等
-                    foreach (var c in Contact)
-                    {
-                        con = c.Continue;
-                        if (con == 0) { break; }
-                        if (c.MsgType == 2)
-                        {
-                            var user = c.UserName;
-                            var nick = c.NickName;
-                            var bit = c.BitValue;
-                            if (bit == 3)
-                            {
-                                //群组
-
-                            }
-                            lock (objGroup)
-                            {
-                                WxDelegate.show(user);
-                                //若用户名中包含了@符号的，表示这是一个群
-                                if (user.IndexOf("@") != -1)
-                                {
-                                    WxDelegate.show(user + "---" + nick + "|" + bit.ToString());
-                                    if (!dicg.ContainsKey(user))
-                                    {
-                                        dicg.Add(user, user);
-                                        //将所有包含@符号的群收集起来
-                                        wxGroup.Add(new WxGroup() { groupid = c.UserName, groupname = c.NickName, WxUser = this.wxUser.wxid, membercount = c.MemberCount });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (con == 0) { break; }
-                }
-                XzyWxApis.WXSyncReset(pointerWxUser);
-
-                //过滤群，将得到有成员列表的群。若没有成员的群，将被过滤掉
-                List<WxGroup> nWxGroup = new List<WxGroup>();
-
-                for (int i = 0; i < wxGroup.Count; i++)
-                {
-                    WxGroup n = wxGroup[i];
-                    n.member = this.Wx_GetGroupMember(wxGroup[i].groupid);
-
-                    //无群成员，则过滤掉
-                    if (n.member != null)
-                    {
-                        nWxGroup.Add(n);
-
-                    }
-                }
-                wxGroup = nWxGroup;
-                TcpSendMsg(TcpMsg.Group, wxGroup);
-            }
-        }
-
-        /// <summary>
-        /// 取群成员
-        /// </summary>
-        /// <param name="groupId"></param>
-        /// <returns></returns>
-        public unsafe List<WxMember> Wx_GetGroupMember(string groupId)
-        {
-            fixed (int* WxUser1 = &pointerWxUser, readmember1 = &readMember)
-            {
-                XzyWxApis.WXGetChatRoomMember(pointerWxUser, groupId, (int)readmember1);
-                var datas = MarshalNativeToManaged((IntPtr)readMember);
-                var str = datas.ToString();
-                Wx_ReleaseEX(ref readMember);
-                GroupMember groupmember = null;
-                groupmember = Newtonsoft.Json.JsonConvert.DeserializeObject<GroupMember>(str);
-                List<Member> member = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Member>>(groupmember.Member);
-                List<WxMember> WxMember = new List<WxMember>();
-                if (member != null && member.Count > 0)
-                {
-                    foreach (var m in member)
-                    {
-                        WxMember w = new WxMember();
-                        w.userid = this.wxUser.wxid;
-                        w.groupid = groupId;
-                        w.nickname = m.NickName;
-                        w.wxid = m.UserName;
-                        WxMember.Add(w);
-                    }
-                    return WxMember;
-                }
-                return null;
-            }
-        }
-
-        public object wx_objMsg = new object();
-        /// <summary>
-        /// 设置消息。用于判断消息是否被处理过。若未处理过，则返回true，已经处理过的，返回false。
-        /// </summary>
-        /// <param name="msgid"></param>
-        /// <returns></returns>
-        public bool Wx_SetMsgKey(string msgid)
-        {
-            lock (wx_objMsg)
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, imptr1 = &wx_imptr)
             {
                 try
                 {
-                    if (dicReadContent.Count > 5000)
-                    {
-                        dicReadContent = new Dictionary<string, string>();
-                    }
+                    FileStream fs = new FileStream(silkpath, FileMode.Open, FileAccess.Read);
+                    //获取文件大小
+                    long size = fs.Length;
 
-                    if (!dicReadContent.ContainsKey(msgid))
+                    byte[] data = new byte[size];
+                    //将文件读到byte数组中
+                    fs.Read(data, 0, data.Length);
+                    fs.Close();
+                    if (data.Length > 0)
                     {
-                        dicRedPack.Add(msgid, msgid);
-                        return true;
+                        XzyWxApis.WXSendVoice(pointerWxUser, wxid, data, data.Length, time * 1000, (int)imptr1);
+                        var datas = MarshalNativeToManaged((IntPtr)wx_imptr);
+                        result = datas.ToString();
+                        Wx_ReleaseEX(ref wx_imptr);
                     }
                 }
-                catch
-                {
-                    return false;
-                }
+                catch { }
             }
-            return false;
+            return result;
         }
 
-        int wx_intoGroup = 0;
         /// <summary>
-        /// 进群
+        /// 分享名片
         /// </summary>
-        /// <param name="url"></param>
-        public unsafe void Wx_IntoGroup(string url)
-        {
-            if (url != "")
-            {
-
-                fixed (int* WxUser1 = &pointerWxUser, jinqun1 = &wx_intoGroup)
-                {
-                    XzyWxApis.WXGetRequestToken(pointerWxUser, "", url, (int)jinqun1);
-                    if ((int)jinqun1 == 0) { return; }
-
-                    var json = MarshalNativeToManaged((IntPtr)wx_intoGroup).ToString();
-                    Wx_ReleaseEX(ref wx_intoGroup);
-                    if (json == "") { return; }
-                    EnterGroupJson jinqunjson = Newtonsoft.Json.JsonConvert.DeserializeObject<EnterGroupJson>(json);
-                    var FullUrl = jinqunjson.FullUrl;
-                    var tk = Utilities.GetMidStr(jinqunjson.FullUrl + "||||", "ticket=", "||||");
-                    Http_Helper Http_Helper = new Http_Helper();
-                    var res = "";
-                    var status = Http_Helper.GetResponse_WX(ref res, FullUrl, "POST", "", FullUrl, 30000, "UTF-8", true);
-                    WxDelegate.show("被邀请进入群，开始读通讯录！");
-                    this.Wx_GetContacts();
-                }
-            }
-        }
-
-        public object wx_groupObj = new object();
-        /// <summary>
-        /// 更新群成员
-        /// </summary>
-        /// <param name="groupId"></param>
+        /// <param name="user"></param>
+        /// <param name="wxid"></param>
+        /// <param name="title"></param>
         /// <returns></returns>
-        public bool Wx_SetGroup(string groupId)
+        public unsafe string Wx_ShareCard(string user, string wxid, string title)
         {
-            lock (wx_groupObj)
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
             {
-                try
-                {
-                    List<WxGroup> nWxGroup = new List<WxGroup>();
-
-                    for (int i = 0; i < wxGroup.Count; i++)
-                    {
-                        WxGroup n = wxGroup[i];
-                        if (groupId == n.groupid)
-                        {
-                            n.member = this.Wx_GetGroupMember(wxGroup[i].groupid);
-                        }
-                        if (n.member != null)
-                        {
-                            nWxGroup.Add(n);
-                        }
-                    }
-                    wxGroup = nWxGroup;
-                    TcpSendMsg(TcpMsg.Group, wxGroup);
-                }
-                catch
-                {
-                    return false;
-                }
+                XzyWxApis.WXShareCard(pointerWxUser, user, wxid, title, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
             }
-            return false;
+            return result;
         }
 
         /// <summary>
@@ -1163,6 +1001,523 @@ namespace IPADDemo.WeChat
                     Console.WriteLine("异常事件");
                 }
             }
+        }
+
+        public object wx_objMsg = new object();
+        /// <summary>
+        /// 设置消息。用于判断消息是否被处理过。若未处理过，则返回true，已经处理过的，返回false。
+        /// </summary>
+        /// <param name="msgid"></param>
+        /// <returns></returns>
+        public bool Wx_SetMsgKey(string msgid)
+        {
+            lock (wx_objMsg)
+            {
+                try
+                {
+                    if (dicReadContent.Count > 5000)
+                    {
+                        dicReadContent = new Dictionary<string, string>();
+                    }
+
+                    if (!dicReadContent.ContainsKey(msgid))
+                    {
+                        dicRedPack.Add(msgid, msgid);
+                        return true;
+                    }
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        #endregion 微信消息
+
+        #region 微信群
+
+        /// <summary>
+        /// 取群成员
+        /// </summary>
+        /// <param name="groupId"></param>
+        /// <returns></returns>
+        public unsafe List<WxMember> Wx_GetGroupMember(string groupId)
+        {
+            fixed (int* WxUser1 = &pointerWxUser, readmember1 = &readMember)
+            {
+                XzyWxApis.WXGetChatRoomMember(pointerWxUser, groupId, (int)readmember1);
+                var datas = MarshalNativeToManaged((IntPtr)readMember);
+                var str = datas.ToString();
+                Wx_ReleaseEX(ref readMember);
+                GroupMember groupmember = null;
+                groupmember = Newtonsoft.Json.JsonConvert.DeserializeObject<GroupMember>(str);
+                List<Member> member = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Member>>(groupmember.Member);
+                List<WxMember> WxMember = new List<WxMember>();
+                if (member != null && member.Count > 0)
+                {
+                    foreach (var m in member)
+                    {
+                        WxMember w = new WxMember();
+                        w.userid = this.wxUser.wxid;
+                        w.groupid = groupId;
+                        w.nickname = m.NickName;
+                        w.wxid = m.UserName;
+                        WxMember.Add(w);
+                    }
+                    return WxMember;
+                }
+                return null;
+            }
+        }
+
+        int wx_intoGroup = 0;
+        /// <summary>
+        /// 进群
+        /// </summary>
+        /// <param name="url"></param>
+        public unsafe void Wx_IntoGroup(string url)
+        {
+            if (url != "")
+            {
+
+                fixed (int* WxUser1 = &pointerWxUser, jinqun1 = &wx_intoGroup)
+                {
+                    XzyWxApis.WXGetRequestToken(pointerWxUser, "", url, (int)jinqun1);
+                    if ((int)jinqun1 == 0) { return; }
+
+                    var json = MarshalNativeToManaged((IntPtr)wx_intoGroup).ToString();
+                    Wx_ReleaseEX(ref wx_intoGroup);
+                    if (json == "") { return; }
+                    EnterGroupJson jinqunjson = Newtonsoft.Json.JsonConvert.DeserializeObject<EnterGroupJson>(json);
+                    var FullUrl = jinqunjson.FullUrl;
+                    var tk = Utilities.GetMidStr(jinqunjson.FullUrl + "||||", "ticket=", "||||");
+                    Http_Helper Http_Helper = new Http_Helper();
+                    var res = "";
+                    var status = Http_Helper.GetResponse_WX(ref res, FullUrl, "POST", "", FullUrl, 30000, "UTF-8", true);
+                    WxDelegate.show("被邀请进入群，开始读通讯录！");
+                    this.Wx_GetContacts();
+                }
+            }
+        }
+
+        public object wx_groupObj = new object();
+        /// <summary>
+        /// 更新群成员
+        /// </summary>
+        /// <param name="groupId"></param>
+        /// <returns></returns>
+        public bool Wx_SetGroup(string groupId)
+        {
+            lock (wx_groupObj)
+            {
+                try
+                {
+                    List<WxGroup> nWxGroup = new List<WxGroup>();
+
+                    for (int i = 0; i < wxGroup.Count; i++)
+                    {
+                        WxGroup n = wxGroup[i];
+                        if (groupId == n.groupid)
+                        {
+                            n.member = this.Wx_GetGroupMember(wxGroup[i].groupid);
+                        }
+                        if (n.member != null)
+                        {
+                            nWxGroup.Add(n);
+                        }
+                    }
+                    wxGroup = nWxGroup;
+                    TcpSendMsg(TcpMsg.Group, wxGroup);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 创建群
+        /// </summary>
+        /// <param name="user"></param>
+        /// <returns></returns>
+        public unsafe string Wx_CreateChatRoom(string user)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXCreateChatRoom(pointerWxUser, user, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+                var tokenData = Newtonsoft.Json.JsonConvert.DeserializeAnonymousType(result, new { user_name = "" });
+                if (!String.IsNullOrEmpty(tokenData.user_name))
+                {
+                    result = tokenData.user_name.Replace(" ", @"\n\u").Substring(4);
+                }
+                if (result.Contains("@chatroom"))
+                {
+
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 退群
+        /// </summary>
+        /// <param name="groupid"></param>
+        /// <returns></returns>
+        public unsafe string Wx_QuitChatRoom(string groupid)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXQuitChatRoom(pointerWxUser, groupid, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 修改群名称
+        /// </summary>
+        /// <param name="groupid"></param>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public unsafe string Wx_SetChatroomName(string groupid, string content)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXSetChatroomName(pointerWxUser, groupid, content, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 修改群公告
+        /// </summary>
+        /// <param name="groupid"></param>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public unsafe string Wx_SetChatroomAnnouncement(string groupid, string content)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXSetChatroomAnnouncement(pointerWxUser, groupid, content, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 添加群成员
+        /// </summary>
+        /// <param name="groupid"></param>
+        /// <param name="user"></param>
+        /// <returns></returns>
+        public unsafe string Wx_AddChatRoomMember(string groupid, string user)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXAddChatRoomMember(pointerWxUser, groupid, user, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+        #endregion 微信群
+
+        #region 朋友圈
+        /// <summary>
+        /// 朋友圈评论
+        /// </summary>
+        /// <param name="snsid"></param>
+        /// <param name="content"></param>
+        /// <returns></returns>
+        public unsafe string Wx_SnsComment(string snsid, string content, int replyid)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXSnsComment(pointerWxUser, this.wxUser.wxid, snsid, content, replyid, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 删除评论、点赞
+        /// </summary>
+        /// <param name="snsid"></param>
+        /// <param name="cid"></param>
+        /// <returns></returns>
+        public unsafe string Wx_SnsObjectOpDeleteComment(string snsid, int cid)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXSnsObjectOp(pointerWxUser, snsid, 4, cid, 3, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 获取朋友圈消息详情
+        /// </summary>
+        /// <param name="snsid"></param>
+        /// <returns></returns>
+        public unsafe string Wx_SnsObjectDetail(string snsid)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXSnsObjectDetail(pointerWxUser, snsid, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                if (datas != null)
+                {
+                    result = datas.ToString();
+                    Wx_ReleaseEX(ref msgPtr);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 发朋友圈
+        /// </summary>
+        /// <param name="wxid"></param>
+        /// <param name="content"></param>
+        public unsafe void Wx_SendMoment(string content, string imagelist)
+        {
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                if (!String.IsNullOrEmpty(imagelist))
+                {
+                    string imagestr = "";
+                    List<string> list = JsonConvert.DeserializeObject<List<string>>(imagelist);
+                    foreach (string strImage in list)
+                    {
+                        var reg = new Regex("data:image/(.*);base64,");
+                        string fileBase64 = reg.Replace(strImage, "");
+                        var reg2 = new Regex("data:video/(.*);base64,");
+                        fileBase64 = reg2.Replace(fileBase64, "");
+                        string strUploadResult = Wx_SnsUpload(fileBase64);
+                        SnsUpload upload = JsonConvert.DeserializeObject<SnsUpload>(strUploadResult);
+                        imagestr += String.Format(App.PYQContentImage, upload.big_url, upload.small_url, upload.size, 100, 100);
+                    }
+                    var result = String.Format(App.PYQContent, wxUser.wxid, Encoding.Default.GetString(Encoding.UTF8.GetBytes(content.ToString())), imagestr);
+                    XzyWxApis.WXSendMoments(pointerWxUser, result, (int)msgptr1);
+                    var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                    var str = datas.ToString();
+                    Wx_ReleaseEX(ref msgPtr);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 朋友圈图片上传
+        /// </summary>
+        /// <param name="base64"></param>
+        /// <returns></returns>
+        public unsafe string Wx_SnsUpload(string base64)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, imptr1 = &wx_imptr)
+            {
+                try
+                {
+                    byte[] data = Convert.FromBase64String(base64);
+                    if (data.Length > 0)
+                    {
+                        XzyWxApis.WXSnsUpload(pointerWxUser, data, data.Length, (int)imptr1);
+                        var datas = MarshalNativeToManaged((IntPtr)wx_imptr);
+                        result = datas.ToString();
+                        Wx_ReleaseEX(ref wx_imptr);
+                    }
+                }
+                catch { }
+            }
+            return result;
+        }
+
+        #endregion 朋友圈
+
+        private int wx_resultContacts;
+        /// <summary>
+        /// 获取通讯录
+        /// </summary>
+        public unsafe void Wx_GetContacts()
+        {
+            if (wxGroup != null && wxGroup.Count > 0)
+            {
+                TcpSendMsg(TcpMsg.Group, wxGroup);
+                return;
+            }
+            wxGroup = new List<WxGroup>();
+            Dictionary<string, string> dicg = new Dictionary<string, string>();
+            fixed (int* WxUser1 = &pointerWxUser, resulttxl1 = &wx_resultContacts)
+            {
+                while (true)
+                {
+                    Thread.Sleep(200);
+                    XzyWxApis.WXSyncContact(pointerWxUser, (int)(resulttxl1));
+                    if (wx_resultContacts == 0)
+                    {
+                        continue;
+                    }
+                    var datas = MarshalNativeToManaged((IntPtr)wx_resultContacts);
+                    Wx_ReleaseEX(ref wx_resultContacts);
+                    if (datas == null) { continue; }
+                    var str = datas.ToString();
+                    List<Contact> Contact = null;
+                    Contact = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Contact>>(str);
+                    result = 0;
+                    var con = 0;
+                    //循环所有通讯录对象，此通讯录包括好友、群、公众号等
+                    foreach (var c in Contact)
+                    {
+                        con = c.Continue;
+                        if (con == 0) { break; }
+                        if (c.MsgType == 2)
+                        {
+                            var user = c.UserName;
+                            var nick = c.NickName;
+                            var bit = c.BitValue;
+                            if (bit == 3)
+                            {
+                                //群组
+
+                            }
+                            lock (objGroup)
+                            {
+                                WxDelegate.show(user);
+                                //若用户名中包含了@符号的，表示这是一个群
+                                if (user.IndexOf("@") != -1)
+                                {
+                                    WxDelegate.show(user + "---" + nick + "|" + bit.ToString());
+                                    if (!dicg.ContainsKey(user))
+                                    {
+                                        dicg.Add(user, user);
+                                        //将所有包含@符号的群收集起来
+                                        wxGroup.Add(new WxGroup() { groupid = c.UserName, groupname = c.NickName, WxUser = this.wxUser.wxid, membercount = c.MemberCount });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (con == 0) { break; }
+                }
+                XzyWxApis.WXSyncReset(pointerWxUser);
+
+                //过滤群，将得到有成员列表的群。若没有成员的群，将被过滤掉
+                List<WxGroup> nWxGroup = new List<WxGroup>();
+
+                for (int i = 0; i < wxGroup.Count; i++)
+                {
+                    WxGroup n = wxGroup[i];
+                    n.member = this.Wx_GetGroupMember(wxGroup[i].groupid);
+
+                    //无群成员，则过滤掉
+                    if (n.member != null)
+                    {
+                        nWxGroup.Add(n);
+
+                    }
+                }
+                wxGroup = nWxGroup;
+                TcpSendMsg(TcpMsg.Group, wxGroup);
+            }
+        }
+
+        /// <summary>
+        /// 接受好友请求
+        /// </summary>
+        /// <param name="stranger"></param>
+        /// <param name="ticket"></param>
+        /// <returns></returns>
+        public unsafe string Wx_AcceptUser(string stranger, string ticket)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXAcceptUser(pointerWxUser, stranger, ticket, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 获取登录token
+        /// </summary>
+        /// <returns></returns>
+        public unsafe string Wx_GetLoginToken()
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXGetLoginToken(pointerWxUser, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 获取62数据
+        /// </summary>
+        /// <returns></returns>
+        public unsafe string Wx_GenerateWxDat()
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXGenerateWxDat(pointerWxUser, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 62数据加token登录
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        public unsafe string Wx_LoginRequest(string token)
+        {
+            var result = "";
+            fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
+            {
+                XzyWxApis.WXLoginRequest(pointerWxUser, token, (int)msgptr1);
+                var datas = MarshalNativeToManaged((IntPtr)msgPtr);
+                result = datas.ToString();
+                Wx_ReleaseEX(ref msgPtr);
+            }
+            return result;
         }
 
         //读红包key
