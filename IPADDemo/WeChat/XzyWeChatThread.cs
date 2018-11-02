@@ -714,7 +714,6 @@ namespace IPADDemo.WeChat
         /// <param name="content"></param>
         public unsafe void Wx_SendMsg(string wxid, string content)
         {
-            WxDelegate.receiveMsg(content);
             content = content.Replace(" ", "\r\n");
             fixed (int* WxUser1 = &pointerWxUser, msgptr1 = &msgPtr)
             {
@@ -784,7 +783,6 @@ namespace IPADDemo.WeChat
                     var str = datas.ToString();
                     List<Contact> Contact = null;
                     Contact = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Contact>>(str);
-                    WxDelegate.getContacts(Contact);
                     result = 0;
                     var con = 0;
                     //循环所有通讯录对象，此通讯录包括好友、群、公众号等
@@ -839,7 +837,6 @@ namespace IPADDemo.WeChat
                     }
                 }
                 wxGroup = nWxGroup;
-                WxDelegate.getGroups(wxGroup);
                 TcpSendMsg(TcpMsg.Group, wxGroup);
             }
         }
